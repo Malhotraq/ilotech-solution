@@ -6,6 +6,8 @@ out/
 # db lokal (jangan di-commit ke git, tapi di-mount via Docker volume)
 data/*.db
 data/*.db-journal
+data/*.db-shm
+data/*.db-wal
 *.db
 
 # env
