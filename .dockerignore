@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+data/*.db
+npm-debug.log
+Dockerfile
+.dockerignore
+.gitignore
+README.md
+DEPLOY.md
+legacy-static

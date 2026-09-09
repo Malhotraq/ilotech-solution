@@ -1,0 +1,15 @@
+# docker-compose.yml — cara jalan: docker compose up -d --build
+services:
+  web:
+    build: .
+    container_name: ilotech-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"   # buka http://localhost:3000  (atau http://IP-VPS:3000)
+    env_file:
+      - .env          # wajib ada! copy dari .env.example
+    environment:
+      DB_PATH: /app/data/ilotech.db
+      NODE_ENV: production
+    volumes:
+      - ./data:/app/data   # database SQLite disimpan di folder ./data (awet walau container dihapus)

@@ -1,0 +1,17 @@
+# deps
+node_modules/
+.next/
+out/
+
+# db lokal (jangan di-commit ke git, tapi di-mount via Docker volume)
+data/*.db
+data/*.db-journal
+*.db
+
+# env
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
