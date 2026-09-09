@@ -39,7 +39,7 @@ function LoginForm() {
         <Link href="/" style={{ color: 'var(--cy)', textDecoration: 'none', fontWeight: 700 }}>← Kembali ke web</Link>
         <h1 style={{ margin: '10px 0 6px' }}>🔐 Login Admin</h1>
         <p style={{ color: 'var(--mut)', fontSize: 14, marginBottom: 16 }}>
-          Khusus pemilik/teknisi IloTech. Password ada di file <code>.env</code> (ADMIN_PASSWORD).
+          Khusus pemilik/teknisi IloTech.
         </p>
         {error && <div className="err">⚠️ {error}</div>}
         <form onSubmit={submit}>
