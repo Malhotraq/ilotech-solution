@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getAdminCookieName, verifyAdminToken } from '@/lib/auth';
-import { getDb, rowToOrder } from '@/lib/db';
+import { query, rowToOrder, escapeLike } from '@/lib/db';
 
 function unauthorized() {
   return NextResponse.json({ error: 'Unauthorized. Silakan login admin.' }, { status: 401 });
@@ -20,28 +20,41 @@ export async function GET(req) {
     const status = (searchParams.get('status') || '').toUpperCase();
     const q = (searchParams.get('q') || '').trim();
 
-    const db = getDb();
     let rows;
     if (status) {
-      rows = db.prepare('SELECT * FROM orders WHERE status = ? ORDER BY id DESC LIMIT 200').all(status);
+      const r = await query('SELECT * FROM orders WHERE status = $1 ORDER BY id DESC LIMIT 200', [status]);
+      rows = r.rows;
     } else if (q) {
-      const like = `%${q}%`;
-      rows = db
-        .prepare(
-          `SELECT * FROM orders WHERE kode LIKE ? OR nama LIKE ? OR wa LIKE ? OR layanan LIKE ? ORDER BY id DESC LIMIT 200`
-        )
-        .all(like, like, like, like);
+      const like = `%${escapeLike(q)}%`;
+      const r = await query(
+        `SELECT * FROM orders WHERE kode ILIKE $1 ESCAPE '\\' OR nama ILIKE $1 ESCAPE '\\' OR wa ILIKE $1 ESCAPE '\\' OR layanan ILIKE $1 ESCAPE '\\' ORDER BY id DESC LIMIT 200`,
+        [like]
+      );
+      rows = r.rows;
     } else {
-      rows = db.prepare('SELECT * FROM orders ORDER BY id DESC LIMIT 200').all();
+      const r = await query('SELECT * FROM orders ORDER BY id DESC LIMIT 200');
+      rows = r.rows;
     }
 
     // statistik sederhana
-    const stats = db
-      .prepare(`SELECT status, COUNT(*) c FROM orders GROUP BY status`)
-      .all()
-      .reduce((a, r) => ({ ...a, [r.status]: r.c }), {});
+    const s = await query(`SELECT status, COUNT(*)::int c FROM orders GROUP BY status`);
+    const stats = s.rows.reduce((a, r) => ({ ...a, [r.status]: r.c }), {});
 
-    return NextResponse.json({ orders: rows.map(rowToOrder), stats });
+    // ringkasan bisnis untuk kartu atas dashboard
+    const aktif = await query(`SELECT COUNT(*)::int c FROM orders WHERE status NOT IN ('DIAMBIL','DIBATALKAN')`);
+    const perhatian = await query(`SELECT COUNT(*)::int c FROM orders WHERE status IN ('DITERIMA','MENUNGGU_PERSETUJUAN')`);
+    const omzet = await query(
+      `SELECT COALESCE(SUM(biaya_akhir),0)::bigint t FROM orders
+       WHERE status IN ('SELESAI','DIAMBIL')
+       AND to_char(created_at,'YYYY-MM') = to_char(now(),'YYYY-MM')`
+    );
+    const finance = {
+      aktif: aktif.rows[0]?.c || 0,
+      perhatian: perhatian.rows[0]?.c || 0,
+      omzetBulanIni: Number(omzet.rows[0]?.t) || 0,
+    };
+
+    return NextResponse.json({ orders: rows.map(rowToOrder), stats, finance });
   } catch (e) {
     console.error('GET /api/admin/orders', e);
     return NextResponse.json({ error: 'Gagal memuat.' }, { status: 500 });

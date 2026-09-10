@@ -10,6 +10,13 @@ data/*.db-shm
 data/*.db-wal
 *.db
 
+# foto upload pelanggan (ikut volume Docker, jangan di-commit)
+data/uploads/*
+!data/uploads/.gitkeep
+
+# hasil backup lokal (jangan di-commit, simpan di tempat aman)
+backups/
+
 # env
 .env
 .env.local

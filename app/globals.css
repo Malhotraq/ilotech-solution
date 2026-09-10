@@ -191,3 +191,31 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
   .kv{grid-template-columns:1fr}
 }
 @media(max-width:560px){.grid4,.steps{grid-template-columns:1fr}}
+
+/* === FITUR BARU: foto kerusakan, persetujuan, nota === */
+.foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
+.foto-thumb{position:relative;display:block;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#0a1327}
+.foto-thumb img{width:100%;height:110px;object-fit:cover;display:block}
+.foto-thumb button{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(0,0,0,.7);color:#fff;cursor:pointer;font-size:13px}
+.approve-box{margin-top:18px;background:rgba(255,159,28,.08);border:1px solid var(--or);border-radius:16px;padding:18px}
+.approve-box h3{margin:0 0 8px}
+.nota{background:#fff;color:#111;border-radius:16px;padding:28px;margin-top:26px}
+.nota-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #111;padding-bottom:14px;margin-bottom:14px}
+.nota-head .kode{font-size:20px;font-weight:900;letter-spacing:1px}
+.nota-tbl{width:100%;border-collapse:collapse;font-size:15px}
+.nota-tbl td{padding:8px 6px;border-bottom:1px solid #ddd;vertical-align:top}
+.nota-tbl td:first-child{color:#555;width:170px}
+.nota-tbl tr.total td{font-size:19px;font-weight:900;border-bottom:none;border-top:2px solid #111}
+.nota-foot{font-size:13px;color:#444;margin-top:14px}
+@media(max-width:560px){.foto-grid{grid-template-columns:1fr 1fr}.nota-tbl td:first-child{width:120px}}
+.harga-list{list-style:none;margin:0 0 14px;padding:0}
+.harga-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px}
+.harga-list li:last-child{border-bottom:none}
+.harga-list small{color:var(--mut)}
+.harga-list b{white-space:nowrap;color:var(--cy)}
+@media print{
+  header.nav,footer,.float-wa,.no-print{display:none}
+  body{background:#fff}
+  .nota{border-radius:0;margin:0;padding:0}
+  .nota a{color:#111;text-decoration:none}
+}

@@ -4,13 +4,15 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { StatusBadge, formatRupiah } from '@/components/OrderUI';
-import { STATUS_LABEL } from '@/lib/status';
+import { STATUS_LABEL, nextStatus } from '@/lib/status';
+import { formatTanggal, formatTanggalPendek } from '@/lib/format';
 
 const ALL_STATUS = ['SEMUA', 'DITERIMA', 'DIAGNOSA', 'MENUNGGU_PERSETUJUAN', 'DIKERJAKAN', 'SELESAI', 'DIAMBIL', 'DIBATALKAN'];
 
 export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({});
+  const [finance, setFinance] = useState({ aktif: 0, perhatian: 0, omzetBulanIni: 0 });
   const [status, setStatus] = useState('SEMUA');
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,7 @@ export default function Dashboard() {
     const data = await res.json();
     setOrders(data.orders || []);
     setStats(data.stats || {});
+    setFinance(data.finance || { aktif: 0, perhatian: 0, omzetBulanIni: 0 });
     setLoading(false);
   }
 
@@ -78,6 +81,33 @@ export default function Dashboard() {
     router.push('/admin');
   }
 
+  // Aksi cepat: majukan status 1 langkah tanpa buka modal.
+  async function cepat(o) {
+    const ns = nextStatus(o.status);
+    if (!ns) return;
+    if (!confirm(`Update ${o.kode} ke "${STATUS_LABEL[ns]}"? Pelanggan langsung melihatnya.`)) return;
+    const res = await fetch(`/api/admin/orders/${o.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: ns }),
+    });
+    if (!res.ok) {
+      const d = await res.json();
+      alert('❌ ' + (d.error || 'Gagal update'));
+      return;
+    }
+    load();
+  }
+
+  async function hapus(o) {
+    if (!confirm(`HAPUS permanen order ${o.kode} (${o.nama})?`)) return;
+    if (!confirm('Yakin? Data & riwayatnya hilang selamanya dan tidak bisa dibatalkan!')) return;
+    await fetch(`/api/admin/orders/${o.id}`, { method: 'DELETE' });
+    load();
+  }
+
+  const exportHref = `/api/admin/export?${status !== 'SEMUA' ? `status=${status}&` : ''}${q.trim() ? `q=${encodeURIComponent(q.trim())}` : ''}`;
+
   return (
     <div className="wrap admin-shell">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
@@ -90,7 +120,26 @@ export default function Dashboard() {
       </div>
 
       <div className="grid4" style={{ marginTop: 18 }}>
-        {['DITERIMA', 'DIKERJAKAN', 'SELESAI', 'DIAMBIL'].map((s) => (
+        <div className="side-card" style={{ textAlign: 'center', borderColor: 'var(--or)' }}>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{finance.aktif || 0}</div>
+          <div style={{ fontSize: 13, color: 'var(--mut)' }}>Order Aktif</div>
+        </div>
+        <div className="side-card" style={{ textAlign: 'center', borderColor: 'var(--danger)' }}>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{finance.perhatian || 0}</div>
+          <div style={{ fontSize: 13, color: 'var(--mut)' }}>Perlu Perhatian</div>
+        </div>
+        <div className="side-card" style={{ textAlign: 'center', borderColor: 'var(--ok)' }}>
+          <div style={{ fontSize: 22, fontWeight: 900 }}>{formatRupiah(finance.omzetBulanIni)}</div>
+          <div style={{ fontSize: 13, color: 'var(--mut)' }}>Omzet Bulan Ini</div>
+        </div>
+        <div className="side-card" style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{orders.length}</div>
+          <div style={{ fontSize: 13, color: 'var(--mut)' }}>Tampil di Daftar</div>
+        </div>
+      </div>
+
+      <div className="grid4" style={{ marginTop: 18 }}>
+        {Object.keys(STATUS_LABEL).map((s) => (
           <div key={s} className="side-card" style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 28, fontWeight: 900 }}>{stats[s] || 0}</div>
             <div style={{ fontSize: 13, color: 'var(--mut)' }}>{STATUS_LABEL[s]}</div>
@@ -106,6 +155,7 @@ export default function Dashboard() {
         </select>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari kode / nama / WA / layanan..." style={{ flex: 1, minWidth: 200 }} />
         <button className="btn cy btn-sm" type="submit">Cari</button>
+        <a className="btn ghost btn-sm" href={exportHref}>📥 Export CSV</a>
       </form>
 
       <div className="table-wrap">
@@ -127,12 +177,20 @@ export default function Dashboard() {
                   <td>{o.nama}<br /><small style={{ color: 'var(--mut)' }}>{o.wa}</small></td>
                   <td>{o.layanan}<br /><small style={{ color: 'var(--mut)' }}>{o.kategori}</small></td>
                   <td><StatusBadge status={o.status} /></td>
-                  <td><small>{new Date(o.createdAt).toLocaleString('id-ID')}</small></td>
+                  <td><small>{formatTanggal(o.createdAt)}</small></td>
                   <td>
                     <button className="btn btn-sm" style={{ background: 'var(--cy)', color: '#04222a' }} onClick={() => openDetail(o.id)}>
                       Kelola
                     </button>{' '}
-                    <Link href={`/lacak/${o.kode}`} target="_blank" className="btn ghost btn-sm">Lihat</Link>
+                    {nextStatus(o.status) && (
+                      <button className="btn btn-sm" style={{ background: 'var(--ok)', color: '#04222a' }} title={`Langsung lanjut ke: ${STATUS_LABEL[nextStatus(o.status)]}`} onClick={() => cepat(o)}>
+                        ➡️
+                      </button>
+                    )}{' '}
+                    <Link href={`/lacak/${o.kode}`} target="_blank" className="btn ghost btn-sm">Lihat</Link>{' '}
+                    <button className="btn btn-sm" style={{ background: 'transparent', border: '1px solid var(--danger)', color: '#ff9c9c' }} title="Hapus permanen" onClick={() => hapus(o)}>
+                      ✕
+                    </button>
                   </td>
                 </tr>
               ))
@@ -147,7 +205,18 @@ export default function Dashboard() {
             <h3>Kelola {selected.kode}</h3>
             <p style={{ color: 'var(--mut)', fontSize: 14, marginBottom: 12 }}>
               {selected.nama} • {selected.wa} • {selected.layanan}<br />“{selected.deskripsi}”
+              <br /><Link href={`/lacak/${selected.kode}`} target="_blank" style={{ color: 'var(--cy)' }}>🔍 Lihat halaman pelanggan</Link>
+              {' • '}<Link href={`/nota/${selected.kode}`} target="_blank" style={{ color: 'var(--cy)' }}>🖨️ Nota</Link>
             </p>
+            {selected.fotoUrls?.length > 0 && (
+              <div className="foto-grid" style={{ marginBottom: 12 }}>
+                {selected.fotoUrls.map((u, i) => (
+                  <a key={i} href={u} target="_blank" rel="noopener" className="foto-thumb">
+                    <img src={u} alt={`Foto ${i + 1}`} loading="lazy" />
+                  </a>
+                ))}
+              </div>
+            )}
             <div className="grid2">
               <div className="field">
                 <label>Status</label>
@@ -183,7 +252,8 @@ export default function Dashboard() {
             </div>
             {selected.logs?.length > 0 && (
               <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 12 }}>
-                Riwayat: {selected.logs.map((l) => `${STATUS_LABEL[l.status]} (${new Date(l.createdAt).toLocaleDateString('id-ID')})`).join(' → ')}
+                Riwayat: {selected.logs.map((l) => `${STATUS_LABEL[l.status]}${l.actor === 'pelanggan' ? '👤' : ''} (${formatTanggalPendek(l.createdAt)})`).join(' → ')}
+                <br /><small>👤 = aksi pelanggan (setuju/tolak via website)</small>
               </div>
             )}
             <div className="cta-row">

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { StatusBadge } from '@/components/OrderUI';
+import { waLink, formatWaDisplay } from '@/lib/site';
+import { formatTanggalPendek } from '@/lib/format';
 
 export default function LacakPage() {
   const [kode, setKode] = useState('');
@@ -86,7 +88,7 @@ export default function LacakPage() {
                     <StatusBadge status={o.status} />
                   </div>
                   <div style={{ fontSize: 14, color: 'var(--mut)' }}>
-                    {o.layanan} • {o.nama} • {new Date(o.createdAt).toLocaleDateString('id-ID')}
+                    {o.layanan} • {o.nama} • {formatTanggalPendek(o.createdAt)}
                   </div>
                 </div>
               </Link>
@@ -98,8 +100,8 @@ export default function LacakPage() {
           <h4>❓ Kode hilang?</h4>
           <p>
             Cari pakai no. WA di atas, atau chat admin{' '}
-            <a href="https://wa.me/62895803366608" target="_blank" rel="noopener" style={{ color: 'var(--cy)', fontWeight: 800 }}>
-              0895-8033-66608
+            <a href={waLink('Halo IloTech! Saya lupa kode tracking order saya.')} target="_blank" rel="noopener" style={{ color: 'var(--cy)', fontWeight: 800 }}>
+              {formatWaDisplay()}
             </a>{' '}
             dengan menyebut nama + tanggal order.
           </p>

@@ -5,19 +5,33 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { waLink, formatWaDisplay } from '@/lib/site';
+import { formatTanggal } from '@/lib/format';
 
 const LAYANAN = {
   JASA: ['Pembuatan Website', 'Pembuatan Aplikasi', 'Upgrade Laptop & Komputer', 'Lainnya'],
   SERVICE: ['Service HP', 'Laptop & Komputer', 'Service Printer', 'Lainnya'],
 };
 
+// Normalisasi query URL agar link rusak / ketikan manual tidak me-crash form.
+// Contoh yang ditangani: ?kategori=jasa (huruf kecil), ?layanan=Laptop (terpotong
+// karena '&' tidak di-encode di link lama), atau layanan yang tidak dikenal.
+function layananAwal(sp) {
+  const rawKat = (sp.get('kategori') || 'SERVICE').toUpperCase();
+  const kategori = LAYANAN[rawKat] ? rawKat : 'SERVICE';
+  const rawLay = (sp.get('layanan') || '').trim();
+  const cocok = LAYANAN[kategori].find((l) => l.toLowerCase() === rawLay.toLowerCase());
+  return { kategori, layanan: cocok || LAYANAN[kategori][0] };
+}
+
 function OrderForm() {
   const sp = useSearchParams();
+  const awal = layananAwal(sp);
   const [form, setForm] = useState({
     nama: '',
     wa: '',
-    kategori: sp.get('kategori') || 'SERVICE',
-    layanan: sp.get('layanan') || 'Service HP',
+    kategori: awal.kategori,
+    layanan: awal.layanan,
     deskripsi: '',
     alamat: '',
     metodeAntar: 'antar-sendiri',
@@ -25,6 +39,35 @@ function OrderForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hasil, setHasil] = useState(null);
+  const [fotos, setFotos] = useState([]); // File[] maks 3 (JPG/PNG/WebP @3MB)
+  const [preview, setPreview] = useState([]); // thumbnail object-URL
+  const [tahap, setTahap] = useState('');
+
+  function pilihFoto(list) {
+    setError('');
+    const arr = [...fotos];
+    for (const f of list) {
+      if (arr.length >= 3) break;
+      if (!/^image\/(jpeg|png|webp)$/.test(f.type)) {
+        setError(`Format ${f.name} harus JPG / PNG / WebP.`);
+        continue;
+      }
+      if (f.size > 3 * 1024 * 1024 || f.size <= 0) {
+        setError(`Foto ${f.name} maksimal 3 MB.`);
+        continue;
+      }
+      arr.push(f);
+    }
+    const jadi = arr.slice(0, 3);
+    setFotos(jadi);
+    setPreview(jadi.map((f) => URL.createObjectURL(f)));
+  }
+
+  function hapusFoto(i) {
+    const jadi = fotos.filter((_, x) => x !== i);
+    setFotos(jadi);
+    setPreview(jadi.map((f) => URL.createObjectURL(f)));
+  }
 
   function set(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -35,10 +78,22 @@ function OrderForm() {
     setError('');
     setLoading(true);
     try {
+      // 1. Upload foto dulu (bila ada), URL-nya ikut terkirim bersama order.
+      let fotoUrls = [];
+      if (fotos.length) {
+        setTahap(`Mengupload ${fotos.length} foto...`);
+        const fd = new FormData();
+        fotos.forEach((f) => fd.append('foto', f));
+        const up = await fetch('/api/uploads', { method: 'POST', body: fd });
+        const ud = await up.json();
+        if (!up.ok) throw new Error(ud.error || 'Gagal upload foto');
+        fotoUrls = ud.urls || [];
+      }
+      setTahap('Mengirim order...');
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, fotoUrls }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal membuat order');
@@ -48,11 +103,12 @@ function OrderForm() {
       setError(err.message);
     } finally {
       setLoading(false);
+      setTahap('');
     }
   }
 
   if (hasil) {
-    const waText = encodeURIComponent(
+    const waHref = waLink(
       `Halo IloTech! Saya baru order ${hasil.layanan} dengan kode ${hasil.kode}. Nama: ${hasil.nama}. Mohon info selanjutnya.`
     );
     return (
@@ -68,14 +124,14 @@ function OrderForm() {
             <p>KODE TRACKING KAMU</p>
             <div className="kode">{hasil.kode}</div>
             <p style={{ color: 'var(--mut)' }}>
-              {hasil.nama} • {hasil.layanan} • {new Date(hasil.createdAt).toLocaleString('id-ID')}
+              {hasil.nama} • {hasil.layanan} • {formatTanggal(hasil.createdAt)}
             </p>
             <div className="cta-row" style={{ justifyContent: 'center', marginTop: 18 }}>
               <Link className="btn cy" href={`/lacak/${hasil.kode}`}>🔍 Lacak Progres Sekarang</Link>
-              <a className="btn wa" target="_blank" rel="noopener" href={`https://wa.me/62895803366608?text=${waText}`}>
+              <a className="btn wa" target="_blank" rel="noopener" href={waHref}>
                 💬 Konfirmasi via WA
               </a>
-              <button className="btn ghost" onClick={() => { setHasil(null); setForm({ nama: '', wa: '', kategori: 'SERVICE', layanan: 'Service HP', deskripsi: '', alamat: '', metodeAntar: 'antar-sendiri' }); }}>
+              <button className="btn ghost" onClick={() => { setHasil(null); setFotos([]); setPreview([]); setForm({ nama: '', wa: '', kategori: 'SERVICE', layanan: 'Service HP', deskripsi: '', alamat: '', metodeAntar: 'antar-sendiri' }); }}>
                 + Buat Order Lain
               </button>
             </div>
@@ -103,7 +159,7 @@ function OrderForm() {
           <div className="grid2">
             <div className="field">
               <label>Nama Lengkap *</label>
-              <input value={form.nama} onChange={(e) => set('nama', e.target.value)} placeholder="cth: Ahmad Ilomata" required minLength={3} />
+              <input value={form.nama} onChange={(e) => set('nama', e.target.value)} placeholder="cth: Ahmad Ilomata" required minLength={3} maxLength={100} />
             </div>
             <div className="field">
               <label>No. WhatsApp Aktif * <small>(cth: 0812xxxx)</small></label>
@@ -136,9 +192,25 @@ function OrderForm() {
               value={form.deskripsi}
               onChange={(e) => set('deskripsi', e.target.value)}
               placeholder="cth: HP Samsung A12 mati total setelah jatuh, sebelumnya baterai cepat habis. / Mau bikin website toko kue, 5 halaman + katalog WA."
-              required minLength={10}
+              required minLength={10} maxLength={2000}
             />
             <div className="hint">Makin detail makin cepat diagnosa. Minimal 10 karakter.</div>
+          </div>
+
+          <div className="field">
+            <label>Foto Kerusakan <small>(opsional, maks 3 — mempercepat diagnosa)</small></label>
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => pilihFoto(e.target.files)} />
+            <div className="hint">JPG / PNG / WebP, masing-masing maksimal 3 MB.</div>
+            {preview.length > 0 && (
+              <div className="foto-grid">
+                {preview.map((src, i) => (
+                  <div key={i} className="foto-thumb">
+                    <img src={src} alt={`Foto ${i + 1}`} />
+                    <button type="button" onClick={() => hapusFoto(i)} aria-label="Hapus foto">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="field">
@@ -153,12 +225,12 @@ function OrderForm() {
           {form.metodeAntar === 'jemput' && (
             <div className="field">
               <label>Alamat Penjemputan *</label>
-              <textarea value={form.alamat} onChange={(e) => set('alamat', e.target.value)} placeholder="Tulis alamat lengkap + patokan" style={{ minHeight: 70 }} required={form.metodeAntar === 'jemput'} />
+              <textarea value={form.alamat} onChange={(e) => set('alamat', e.target.value)} placeholder="Tulis alamat lengkap + patokan" style={{ minHeight: 70 }} required={form.metodeAntar === 'jemput'} maxLength={500} />
             </div>
           )}
 
           <button className="btn cy" style={{ width: '100%' }} disabled={loading}>
-            {loading ? 'Mengirim...' : '🚀 Kirim Order & Dapat Kode Tracking'}
+            {loading ? (tahap || 'Mengirim...') : '🚀 Kirim Order & Dapat Kode Tracking'}
           </button>
           <p style={{ fontSize: 13, color: 'var(--mut)', marginTop: 10, textAlign: 'center' }}>
             Dengan mengorder kamu setuju dihubungi teknisi via WA. Diagnosa awal gratis.
@@ -182,7 +254,7 @@ function OrderForm() {
           </div>
           <div className="side-card">
             <h4>📞 Butuh bantuan isi form?</h4>
-            <p><a href="https://wa.me/62895803366608" target="_blank" rel="noopener" style={{ color: 'var(--cy)', fontWeight: 800 }}>Chat WA 0895-8033-66608</a></p>
+            <p><a href={waLink('Halo IloTech! Saya butuh bantuan isi form order.')} target="_blank" rel="noopener" style={{ color: 'var(--cy)', fontWeight: 800 }}>Chat WA {formatWaDisplay()}</a></p>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { waLink } from '@/lib/site';
 
-const WA = `https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_WA || '62895803366608'}?text=Halo%20IloTech%20Solution%2C%20saya%20mau%20konsultasi%20service%2Fjasa.`;
+const WA = waLink('Halo IloTech Solution, saya mau konsultasi service/jasa.');
 
 export default function Footer() {
   return (

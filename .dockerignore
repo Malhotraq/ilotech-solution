@@ -9,3 +9,9 @@ Dockerfile
 README.md
 DEPLOY.md
 legacy-static
+# --- arsip web statis lama (sudah dimigrasi ke app/*/): tidak dipakai aplikasi,
+#     jangan ikut ke image Docker agar build context kecil & build cepat ---
+index.html
+css/
+js/
+assets/

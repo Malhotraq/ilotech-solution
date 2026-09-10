@@ -1,15 +1,49 @@
 # docker-compose.yml — cara jalan: docker compose up -d --build
+# Stack: Next.js (web) + Postgres 16 (db). Buka http://localhost:3000
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: ilotech-db
+    restart: unless-stopped
+    env_file:
+      - .env          # POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+    ports:
+      # Hanya localhost (bukan publik): untuk dev lokal / pgAdmin / backup manual.
+      # Di VPS, firewall (ufw) tetap menutupnya dari internet.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # data Postgres awet walau container dihapus
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-ilotech} -d $${POSTGRES_DB:-ilotech}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+
   web:
-    build: .
+    build:
+      context: .
+      # NEXT_PUBLIC_* dibakar ke JS browser saat build -> kirim dari .env agar
+      # tombol WA memakai nomor sendiri. Setelah ganti nomor: up -d --build ulang.
+      args:
+        NEXT_PUBLIC_ADMIN_WA: ${NEXT_PUBLIC_ADMIN_WA:-62895803366608}
     container_name: ilotech-web
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy   # web baru start setelah Postgres siap
     ports:
       - "3000:3000"   # buka http://localhost:3000  (atau http://IP-VPS:3000)
     env_file:
       - .env          # wajib ada! copy dari .env.example
     environment:
-      DB_PATH: /app/data/ilotech.db
+      DATABASE_URL: postgres://${POSTGRES_USER:-ilotech}:${POSTGRES_PASSWORD:?isi-POSTGRES_PASSWORD-di-.env}@db:5432/${POSTGRES_DB:-ilotech}
+      UPLOAD_DIR: /app/data/uploads
       NODE_ENV: production
+      # untuk halaman dinamis (/lacak/[kode] = force-dynamic, render saat request)
+      NEXT_PUBLIC_ADMIN_WA: ${NEXT_PUBLIC_ADMIN_WA:-62895803366608}
     volumes:
-      - ./data:/app/data   # database SQLite disimpan di folder ./data (awet walau container dihapus)
+      - ./data:/app/data   # foto upload di ./data/uploads (awet walau container dihapus)
+
+volumes:
+  pgdata:   # volume bernama untuk file database Postgres

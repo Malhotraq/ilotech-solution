@@ -2,7 +2,7 @@
   "name": "ilotech-solution",
   "version": "1.0.0",
   "private": true,
-  "description": "IloTech Solution — Website jasa & service + sistem order & tracking (Next.js + SQLite + Docker)",
+  "description": "IloTech Solution — Website jasa & service + sistem order & tracking (Next.js + Postgres + Docker)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,8 +10,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
-    "next": "14.2.5",
+    "next": "14.2.35",
+    "pg": "^8.23.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

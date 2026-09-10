@@ -1,10 +1,23 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { waLink, formatWaDisplay } from '@/lib/site';
+import { getTestimoni } from '@/lib/db';
+import { HARGA } from '@/lib/harga';
+import { formatRupiah } from '@/components/OrderUI';
 
-const WA_BASE = 'https://wa.me/62895803366608?text=';
+// Testimoni dibaca langsung dari DB tiap request agar rating baru langsung tampil.
+export const dynamic = 'force-dynamic';
 
-export default function Home() {
+// Link ke /order pakai objek { pathname, query } agar Next.js otomatis
+// meng-encode nilai (penting untuk layanan berkarakter '&' seperti
+// "Laptop & Komputer" — versi string mentah "?layanan=Laptop & Komputer"
+// akan terpotong menjadi "Layanan=Laptop " oleh browser).
+const orderHref = (kategori, layanan) => ({ pathname: '/order', query: { kategori, layanan } });
+
+export default async function Home() {
+  // Bila DB sedang mati, landing tetap tampil (tanpa testimoni) alih-alih 500.
+  const testi = await getTestimoni().catch(() => ({ count: 0, avg: 0, rows: [] }));
   return (
     <>
       <Navbar />
@@ -28,7 +41,7 @@ export default function Home() {
               <Link className="btn ghost" href="/lacak">🔍 Lacak Order</Link>
               <a
                 className="btn wa"
-                href={`${WA_BASE}Halo%20IloTech%20Solution%2C%20saya%20mau%20konsultasi%20service%2Fjasa.`}
+                href={waLink('Halo IloTech Solution, saya mau konsultasi service/jasa.')}
                 target="_blank"
                 rel="noopener"
               >
@@ -37,7 +50,7 @@ export default function Home() {
             </div>
             <div className="mini">
               <div>
-                <b>0895-8033-66608</b>
+                <b>{formatWaDisplay()}</b>
                 <small>WhatsApp / Telepon</small>
               </div>
               <div>
@@ -94,7 +107,7 @@ export default function Home() {
                 <li>Responsif HP & laptop</li>
                 <li>Maintenance lanjutan</li>
               </ul>
-              <Link className="card-cta" href="/order?kategori=JASA&layanan=Pembuatan Website">
+              <Link className="card-cta" href={orderHref('JASA', 'Pembuatan Website')}>
                 Order jasa ini →
               </Link>
             </article>
@@ -108,7 +121,7 @@ export default function Home() {
                 <li>Integrasi sistem & database</li>
                 <li>Update & support</li>
               </ul>
-              <Link className="card-cta" href="/order?kategori=JASA&layanan=Pembuatan Aplikasi">
+              <Link className="card-cta" href={orderHref('JASA', 'Pembuatan Aplikasi')}>
                 Order jasa ini →
               </Link>
             </article>
@@ -122,7 +135,7 @@ export default function Home() {
                 <li>Rakit PC kantor / gaming</li>
                 <li>Konsultasi spek gratis</li>
               </ul>
-              <Link className="card-cta" href="/order?kategori=JASA&layanan=Upgrade Laptop & Komputer">
+              <Link className="card-cta" href={orderHref('JASA', 'Upgrade Laptop & Komputer')}>
                 Order jasa ini →
               </Link>
             </article>
@@ -146,7 +159,7 @@ export default function Home() {
                 <li>Flashing & lupa pola</li>
                 <li>Backup & pindah data</li>
               </ul>
-              <Link className="card-cta" href="/order?kategori=SERVICE&layanan=Service HP">
+              <Link className="card-cta" href={orderHref('SERVICE', 'Service HP')}>
                 Order service ini →
               </Link>
             </article>
@@ -160,7 +173,7 @@ export default function Home() {
                 <li>Virus, lemot & data hilang</li>
                 <li>Sparepart ori / sesuai budget</li>
               </ul>
-              <Link className="card-cta" href="/order?kategori=SERVICE&layanan=Laptop & Komputer">
+              <Link className="card-cta" href={orderHref('SERVICE', 'Laptop & Komputer')}>
                 Order service ini →
               </Link>
             </article>
@@ -174,7 +187,7 @@ export default function Home() {
                 <li>Sharing jaringan / WiFi</li>
                 <li>Maintenance kantor & sekolah</li>
               </ul>
-              <Link className="card-cta" href="/order?kategori=SERVICE&layanan=Service Printer">
+              <Link className="card-cta" href={orderHref('SERVICE', 'Service Printer')}>
                 Order service ini →
               </Link>
             </article>
@@ -182,10 +195,40 @@ export default function Home() {
         </div>
       </section>
 
+      {/* HARGA */}
+      <section className="sec" id="harga">
+        <div className="wrap">
+          <p className="kicker cy">03 — DAFTAR HARGA</p>
+          <h2>Harga Transparan, Mulai Dari</h2>
+          <p className="sub">
+            Harga final selalu dikonfirmasi setelah <b>diagnosa gratis</b> — tidak ada biaya siluman.
+            Kamu tekan Setuju dulu, baru teknisi mengerjakan.
+          </p>
+          <div className="grid3">
+            {HARGA.map((g) => (
+              <article key={g.grup} className="card">
+                <h3>{g.grup}</h3>
+                <ul className="harga-list">
+                  {g.items.map((h) => (
+                    <li key={h.nama}>
+                      <span>{h.nama}{h.catatan && <small> ({h.catatan})</small>}</span>
+                      <b>{h.mulai ? 'mulai ' + formatRupiah(h.mulai) : 'Tanya WA'}</b>
+                    </li>
+                  ))}
+                </ul>
+                <Link className="card-cta" href={orderHref(g.kategori, g.layanan)}>
+                  Order {g.grup} →
+                </Link>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* TENTANG */}
       <section className="sec" id="tentang">
         <div className="wrap">
-          <p className="kicker cy">03 — KENAPA ILOTECH</p>
+          <p className="kicker cy">04 — KENAPA ILOTECH</p>
           <h2>Kenapa Pelanggan Percaya Kami</h2>
           <div className="grid4">
             <div className="why"><b>🔍 Diagnosa Transparan</b><p>Cek kerusakan gratis. Biaya disetujui dulu sebelum dikerjakan.</p></div>
@@ -196,19 +239,49 @@ export default function Home() {
         </div>
       </section>
 
+      {/* TESTIMONI */}
+      <section className="sec" id="testimoni">
+        <div className="wrap">
+          <p className="kicker or">05 — TESTIMONI</p>
+          <h2>Kata Pelanggan Kami</h2>
+          {testi.count > 0 ? (
+            <>
+              <p className="sub">
+                ⭐ <b>{testi.avg.toFixed(1).replace('.', ',')}/5</b> dari <b>{testi.count}</b> penilaian terverifikasi (dari order asli).
+              </p>
+              {testi.rows.length > 0 && (
+                <div className="grid3">
+                  {testi.rows.map((t, i) => (
+                    <article key={i} className="card">
+                      <div>{'⭐'.repeat(Math.min(5, t.rating))}</div>
+                      <p>“{t.ulasan}”</p>
+                      <small style={{ color: 'var(--mut)' }}>{t.nama} • {t.layanan}</small>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="sub">
+              Jadilah yang pertama memberi penilaian setelah order selesai — ratingmu tampil di sini.
+            </p>
+          )}
+        </div>
+      </section>
+
       {/* KONTAK */}
       <section className="sec alt" id="kontak">
         <div className="wrap">
-          <p className="kicker or">04 — KONTAK</p>
+          <p className="kicker or">06 — KONTAK</p>
           <h2>Hubungi Kami Sekarang</h2>
           <div className="kontak-grid">
             <div className="kontak-info">
-              <div className="krow"><span>📲</span><div><small>WHATSAPP / TELEPON</small><br /><a href="https://wa.me/62895803366608" target="_blank" rel="noopener">0895-8033-66608</a></div></div>
+              <div className="krow"><span>📲</span><div><small>WHATSAPP / TELEPON</small><br /><a href={waLink('Halo IloTech Solution, saya mau konsultasi.')} target="_blank" rel="noopener">{formatWaDisplay()}</a></div></div>
               <div className="krow"><span>✉️</span><div><small>EMAIL</small><br /><a href="mailto:IloTechSolution1@gmail.com">IloTechSolution1@gmail.com</a></div></div>
               <div className="krow"><span>📍</span><div><small>ALAMAT</small><p>Desa Ilotidea, Kecamatan Tilango,<br />Kabupaten Gorontalo 96182</p></div></div>
               <div className="krow"><span>⏰</span><div><small>JAM OPERASIONAL</small><p>Senin – Sabtu: 08.00 – 21.00 WITA<br />Home-service area Tilango & Kota Gorontalo</p></div></div>
               <div className="cta-row">
-                <a className="btn wa" href={`${WA_BASE}Halo%20IloTech%20Solution%2C%20saya%20mau%20konsultasi.`} target="_blank" rel="noopener">💬 Chat Sekarang</a>
+                <a className="btn wa" href={waLink('Halo IloTech Solution, saya mau konsultasi.')} target="_blank" rel="noopener">💬 Chat Sekarang</a>
                 <a className="btn ghost" href="https://maps.app.goo.gl/WTq1CyDcs4xE11yv5" target="_blank" rel="noopener">📍 Lihat Maps</a>
               </div>
             </div>

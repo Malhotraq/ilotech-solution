@@ -24,16 +24,20 @@ Estimasi waktu: 1–2 jam (pertama kali). Biaya: VPS ±Rp 60–120rb/bulan + dom
 ```
 [HP Pelanggan] --internet--> [Domain ilotech.id] --> [VPS kamu: Ubuntu + Docker]
                                                             |
-                                                     +------+------+
-                                                     | container   |
-                                                     | Next.js :3000|
-                                                     | + ilotech.db |
-                                                     +-------------+
+                                              +-------------+-------------+
+                                              | container web             |
+                                              | Next.js :3000             |
+                                              +-------------+-------------+
+                                                            | DATABASE_URL
+                                              +-------------+-------------+
+                                              | container db              |
+                                              | Postgres 16 (vol pgdata)  |
+                                              +---------------------------+
 ```
 
 - **VPS** = komputer sewaan yang nyala 24 jam di internet (contoh: IDCloudHost, Niagahoster, Biznet Gio, DigitalOcean, Contabo).
 - **Docker** = “kotak” berisi aplikasimu + Node.js, agar jalan sama persis di laptop & di VPS.
-- **docker-compose.yml** = resep “jalankan kotak web, port 3000, simpan DB di ./data”.
+- **docker-compose.yml** = resep “jalankan kotak web (port 3000) + kotak Postgres, simpan DB di volume `pgdata`, foto di `./data`”.
 - **Domain** = nama cantik (`ilotechsolution.id`) yang mengarah ke IP VPS.
 - **Nginx + Certbot** = pintu depan: menerima `https://...` (port 443) lalu meneruskan ke aplikasimu (port 3000), + sertifikat HTTPS gratis.
 
@@ -54,8 +58,12 @@ Kenapa XAMPP tidak dipakai? XAMPP untuk PHP. Project barumu Node.js (Next.js) �
 ```env
 ADMIN_PASSWORD=BuatPasswordKuat!2026@Gorontalo
 ADMIN_SECRET=isi-string-acak-panjang-minimal-32-karakter-xxxx
-DB_PATH=/app/data/ilotech.db
+POSTGRES_USER=ilotech
+POSTGRES_PASSWORD=BuatPasswordDbKuatJuga!2026xxxx
+POSTGRES_DB=ilotech
 ADMIN_WA=62895803366608
+NEXT_PUBLIC_ADMIN_WA=62895803366608
+SITE_URL=https://domainmilikmu.id
 ```
 
 Bikin secret acak (di PowerShell):
@@ -253,23 +261,31 @@ git pull
 docker compose up -d --build
 ```
 
-**Data order AMAN** karena DB di `./data/ilotech.db` (volume). Jangan hapus folder `data/`!
+**Data order AMAN** karena DB di volume `pgdata` dan foto di `./data` (volume). Jangan hapus volume / folder `data/`! Backup dulu via `./scripts/backup.sh` sebelum update besar.
 
 ---
 
 ## 6. BACKUP & KEAMANAN <a id="6-backup"></a>
 
-**Backup DB (lakukan mingguan / sebelum update besar):**
+**Backup DB + foto (lakukan mingguan / sebelum update besar):**
 
 ```bash
 # di VPS:
 cd /root/ilotech
-cp data/ilotech.db data/backup-$(date +%F).db
+./scripts/backup.sh        # hasil di backups/ (retensi otomatis 14 hari)
 # download ke laptop:
 ```
 
 ```powershell
-scp root@IP-VPS:/root/ilotech/data/ilotech.db C:\Backup\ilotech-2026-09-09.db
+scp -r root@IP-VPS:/root/ilotech/backups C:\Backup\ilotech-backups
+```
+
+Restore bila dibutuhkan:
+
+```bash
+cd /root/ilotech
+docker cp backups/ilotech-2026-09-10-1200.dump ilotech-db:/tmp/restore.dump
+docker compose exec -T db pg_restore -U ilotech -d ilotech --clean /tmp/restore.dump
 ```
 
 **Checklist keamanan:**
@@ -279,7 +295,7 @@ scp root@IP-VPS:/root/ilotech/data/ilotech.db C:\Backup\ilotech-2026-09-09.db
 - [ ] Ubuntu rajin `apt update && apt upgrade -y` (bulanan)
 - [ ] Jangan share file `.env` ke siapa pun / jangan commit ke GitHub! (`.gitignore` sudah mengecualikan `.env`)
 - [ ] Aktifkan firewall `ufw` (lihat atas)
-- [ ] Backup `data/ilotech.db` rutin
+- [ ] Backup rutin via `./scripts/backup.sh` (cek folder `backups/` terisi)
 
 **Melihat log saat error:**
 
@@ -294,7 +310,7 @@ free -h      # cek RAM?
 
 ## 7. OPSI B — VERCEL (tanpa Docker) <a id="7-vercel"></a>
 
-Paling gampang (gratis, HTTPS otomatis), tapi **SQLite tidak cocok** (file hilang tiap deploy) → harus ganti DB ke Vercel Postgres/Neon + Prisma. Langkahnya beda total dan butuh refactor `lib/db.js`. Pilih ini hanya jika:
+Paling gampang (gratis, HTTPS otomatis) + database Neon/Supabase — cukup isi `DATABASE_URL`, tanpa refactor (skema dibuat otomatis saat start). Pilih ini hanya jika:
 
 - Kamu tidak mau urus VPS, dan
 - Siap belajar Postgres.
@@ -309,7 +325,7 @@ Untuk saat ini (UMKM, 1 admin, ingin paham Docker) → **tetap Opsi A**.
 |---|---|---|
 | `docker: command not found` | Docker belum terinstall | Ulangi Langkah 2 |
 | `port 3000 already in use` | Ada container lama | `docker compose down` lalu `up` lagi |
-| Build gagal di `better-sqlite3` | butuh python/make/g++ | Dockerfile sudah install otomatis — pastikan tidak menghapus baris `apt-get install python3 make g++` |
+| Build gagal dengan `npm ci` | `package-lock.json` tidak ikut ter-copy | pastikan `package-lock.json` di-commit ke Git dan tidak masuk `.dockerignore` |
 | `/admin` selalu balik ke login | `ADMIN_SECRET` berubah / cookie expired | Login ulang; pastikan `.env` tidak berubah-ubah |
 | Gambar logo rusak | file belum di `public/` | pastikan `public/logo.jpeg` ada & ter-copy di Dockerfile |
 | Domain tidak bisa dibuka | DNS belum propagasi / Nginx salah | `ping domain`, `nginx -t`, `systemctl status nginx` |
@@ -326,7 +342,7 @@ docker compose up -d --build   # jalan/update
 docker compose logs -f         # lihat log
 docker compose ps              # status
 docker compose down            # stop
-cp data/ilotech.db data/backup-$(date +%F).db  # backup DB
+./scripts/backup.sh            # backup DB + foto
 ```
 
 Selamat! Setelah lewat panduan ini kamu sudah paham alur **ngoding lokal → Docker → VPS → domain → HTTPS** — skill yang kepakai untuk semua project Next.js berikutnya. 🚀
