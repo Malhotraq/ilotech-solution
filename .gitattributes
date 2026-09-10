@@ -1,0 +1,4 @@
+# Paksa LF untuk shell script (CRLF merusak shebang & `set -euo pipefail` di Linux/VPS).
+*.sh text eol=lf
+# PowerShell nyaman dengan CRLF di Windows.
+*.ps1 text eol=crlf
