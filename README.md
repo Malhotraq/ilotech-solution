@@ -13,7 +13,6 @@ Website jasa & service (migrasi dari HTML statis lama ke **Next.js 14**) + fitur
 - ⭐ **Rating & ulasan** setelah selesai — tampil sebagai Testimoni di landing page
 - 🖨️ **/nota/[kode]** — nota siap cetak / simpan PDF
 - 📊 **Dashboard+**: aksi cepat ➡️ per baris, kartu Order Aktif / Perlu Perhatian / Omzet Bulan Ini, **Export CSV**, hapus order, riwayat actor (👤 = aksi pelanggan)
-- 💰 **Daftar harga transparan** di landing (`lib/harga.js` — edit angkanya di sana)
 - 🔍 **SEO lokal**: metadata + sitemap + robots + schema Google Business (Tilango, Gorontalo)
 - 🌟 **Tombol review Google** otomatis muncul setelah pelanggan rating (isi `NEXT_PUBLIC_GOOGLE_REVIEW_URL` — ambil dari Google Business Profile → Bagikan → link review)
 - 💾 Database **Postgres 16** (service `db` di Docker, volume `pgdata`) — aman untuk produksi & mudah di-backup

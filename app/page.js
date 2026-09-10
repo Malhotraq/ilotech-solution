@@ -3,8 +3,6 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { waLink, formatWaDisplay } from '@/lib/site';
 import { getTestimoni } from '@/lib/db';
-import { HARGA } from '@/lib/harga';
-import { formatRupiah } from '@/components/OrderUI';
 
 // Testimoni dibaca langsung dari DB tiap request agar rating baru langsung tampil.
 export const dynamic = 'force-dynamic';
@@ -195,40 +193,10 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* HARGA */}
-      <section className="sec" id="harga">
-        <div className="wrap">
-          <p className="kicker cy">03 — DAFTAR HARGA</p>
-          <h2>Harga Transparan, Mulai Dari</h2>
-          <p className="sub">
-            Harga final selalu dikonfirmasi setelah <b>diagnosa gratis</b> — tidak ada biaya siluman.
-            Kamu tekan Setuju dulu, baru teknisi mengerjakan.
-          </p>
-          <div className="grid3">
-            {HARGA.map((g) => (
-              <article key={g.grup} className="card">
-                <h3>{g.grup}</h3>
-                <ul className="harga-list">
-                  {g.items.map((h) => (
-                    <li key={h.nama}>
-                      <span>{h.nama}{h.catatan && <small> ({h.catatan})</small>}</span>
-                      <b>{h.mulai ? 'mulai ' + formatRupiah(h.mulai) : 'Tanya WA'}</b>
-                    </li>
-                  ))}
-                </ul>
-                <Link className="card-cta" href={orderHref(g.kategori, g.layanan)}>
-                  Order {g.grup} →
-                </Link>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* TENTANG */}
       <section className="sec" id="tentang">
         <div className="wrap">
-          <p className="kicker cy">04 — KENAPA ILOTECH</p>
+          <p className="kicker cy">03 — KENAPA ILOTECH</p>
           <h2>Kenapa Pelanggan Percaya Kami</h2>
           <div className="grid4">
             <div className="why"><b>🔍 Diagnosa Transparan</b><p>Cek kerusakan gratis. Biaya disetujui dulu sebelum dikerjakan.</p></div>
@@ -242,7 +210,7 @@ export default async function Home() {
       {/* TESTIMONI */}
       <section className="sec" id="testimoni">
         <div className="wrap">
-          <p className="kicker or">05 — TESTIMONI</p>
+          <p className="kicker or">04 — TESTIMONI</p>
           <h2>Kata Pelanggan Kami</h2>
           {testi.count > 0 ? (
             <>
@@ -272,7 +240,7 @@ export default async function Home() {
       {/* KONTAK */}
       <section className="sec alt" id="kontak">
         <div className="wrap">
-          <p className="kicker or">06 — KONTAK</p>
+          <p className="kicker or">05 — KONTAK</p>
           <h2>Hubungi Kami Sekarang</h2>
           <div className="kontak-grid">
             <div className="kontak-info">
