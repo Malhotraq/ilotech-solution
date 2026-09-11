@@ -9,10 +9,15 @@ Website jasa & service (migrasi dari HTML statis lama ke **Next.js 14**) + fitur
 - 🔐 **/admin** — login + **/admin/dashboard** untuk kelola order, update status, biaya, catatan (langsung terlihat pelanggan)
 - 📷 **Upload foto kerusakan** (maks 3, JPG/PNG/WebP) — tampil di halaman lacak & dashboard admin
 - 💬 **Notifikasi WA otomatis** via Fonnte: admin dapat info order baru, pelanggan dapat info tiap status berubah (opsional, aktif bila `FONNTE_TOKEN` diisi)
+- 🎫 **WA kode tracking ke pelanggan**: setiap order baru langsung dibalas WA berisi kode `ILS-XXXXXX` + link lacak (opsional, ikut `FONNTE_TOKEN`)
 - ✅ **Persetujuan biaya via tombol** di `/lacak/[kode]` — Setuju → otomatis DIKERJAKAN, Tolak → kembali DIAGNOSA
 - ⭐ **Rating & ulasan** setelah selesai — tampil sebagai Testimoni di landing page
 - 🖨️ **/nota/[kode]** — nota siap cetak / simpan PDF
-- 📊 **Dashboard+**: aksi cepat ➡️ per baris, kartu Order Aktif / Perlu Perhatian / Omzet Bulan Ini, **Export CSV**, hapus order, riwayat actor (👤 = aksi pelanggan)
+- 📊 **Dashboard+**: aksi cepat ➡️ per baris, kartu Order Aktif / Perlu Perhatian / **Lewat SLA** / Omzet Bulan Ini, **Export CSV**, hapus order, riwayat actor (👤 = aksi pelanggan)
+- ⏱️ **Pengingat SLA**: tiap order dihitung umurnya sejak update terakhir (batas: Diterima 24 jam, Diagnosa 48 jam, Menunggu Persetujuan 72 jam, Dikerjakan 5 hari, Selesai 72 jam) — yang lewat ditandai 🔴 + bisa difilter khusus
+- 📅 **Filter tanggal + grafik omzet 14 hari** di dashboard (preset: Hari ini / 7 hari / Bulan ini, Export CSV ikut filter)
+- 🗜️ **Foto otomatis dikompres** di browser (maks 1280px) + script `npm run cleanup:uploads` untuk hapus foto orphan via cron
+- 💚 **/status** — halaman publik kondisi website & database + **PWA dasar** (bisa "Install/Add to Home Screen", ikon + theme gelap)
 - 🔍 **SEO lokal**: metadata + sitemap + robots + schema Google Business (Tilango, Gorontalo)
 - 🌟 **Tombol review Google** otomatis muncul setelah pelanggan rating (isi `NEXT_PUBLIC_GOOGLE_REVIEW_URL` — ambil dari Google Business Profile → Bagikan → link review)
 - 💾 Database **Postgres 16** (service `db` di Docker, volume `pgdata`) — aman untuk produksi & mudah di-backup
@@ -33,6 +38,7 @@ IloTechSolution/
 │   ├── order/page.js        # form order
 │   ├── lacak/page.js        # halaman cari order
 │   ├── lacak/[kode]/page.js # detail + timeline order
+│   ├── status/page.js       # status publik website & database
 │   ├── admin/page.js        # login admin
 │   ├── admin/dashboard/page.js
 │   └── api/
@@ -51,6 +57,8 @@ IloTechSolution/
 │   └── status.js  # daftar status order
 ├── public/
 │   ├── logo.jpeg  # pindahan dari assets/
+│   ├── icon-192.png, icon-512.png, apple-touch-icon.png  # ikon PWA (dibangkitkan dari logo)
+│   ├── manifest.webmanifest  # agar bisa di-install (Add to Home Screen)
 │   └── qr-wa.png
 ├── data/          # foto upload (./data/uploads) — di-mount sebagai volume Docker
 ├── middleware.js  # jaga /admin/dashboard harus login
@@ -222,6 +230,14 @@ Jadwalkan otomatis di VPS (tiap jam 2 pagi):
 crontab -e
 # tambah baris:
 0 2 * * * cd /root/ilotech && ./scripts/backup.sh >> backups/cron.log 2>&1
+# bersih foto orphan tiap Minggu jam 3 pagi (simulasi dulu dengan --dry-run):
+0 3 * * 0 cd /root/ilotech && /usr/bin/node scripts/cleanup-uploads.mjs >> backups/cleanup.log 2>&1
+```
+
+Cek manual kapan saja (simulasi tanpa menghapus):
+
+```powershell
+npm run cleanup:uploads -- --dry-run
 ```
 
 ---
@@ -233,4 +249,6 @@ crontab -e
 - [x] Cetak nota / invoice + QR kode tracking (selesai — `/nota/[kode]`, siap print/PDF)
 - [ ] Multi-admin + peran (teknisi vs kasir)
 - [x] Ganti SQLite → Postgres (selesai — Postgres 16 via Docker + `pg`)
-- [ ] Pengingat otomatis bila order terlalu lama di satu status (SLA)
+- [x] Pengingat otomatis bila order terlalu lama di satu status / SLA (selesai — badge umur + filter 🔴 Lewat SLA + kartu dashboard; batas di `SLA_JAM`, `lib/status.js`)
+- [x] WA kode tracking otomatis ke pelanggan + halaman /status + PWA dasar (selesai)
+- [ ] Grafik omzet per layanan & laporan bulanan PDF

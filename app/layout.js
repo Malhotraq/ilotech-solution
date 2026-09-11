@@ -12,6 +12,17 @@ const DESKRIPSI =
 export const metadata = {
   title: JUDUL,
   description: DESKRIPSI,
+  manifest: '/manifest.webmanifest',
+  themeColor: '#05080f',
+  appleWebApp: {
+    capable: true,
+    title: 'IloTech Solution',
+    statusBarStyle: 'black-translucent',
+  },
+  icons: {
+    icon: '/icon-192.png',
+    apple: '/apple-touch-icon.png',
+  },
   keywords: [
     'service HP Gorontalo',
     'service laptop Gorontalo',

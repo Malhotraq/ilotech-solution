@@ -13,11 +13,13 @@ export async function GET(req, { params }) {
     return NextResponse.json({ error: 'Nama file tidak valid.' }, { status: 400 });
   }
   const file = path.join(uploadDir(), path.basename(nama));
-  if (!fs.existsSync(file)) {
+  try {
+    await fs.promises.access(file, fs.constants.R_OK);
+  } catch {
     return NextResponse.json({ error: 'Foto tidak ditemukan.' }, { status: 404 });
   }
   const ext = path.extname(nama).toLowerCase();
-  const buf = fs.readFileSync(file);
+  const buf = await fs.promises.readFile(file);
   return new Response(buf, {
     headers: {
       'Content-Type': MIME[ext] || 'application/octet-stream',

@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cleanup:uploads": "node scripts/cleanup-uploads.mjs"
   },
   "dependencies": {
     "next": "14.2.35",

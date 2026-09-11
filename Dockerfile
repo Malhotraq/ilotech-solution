@@ -11,6 +11,7 @@ COPY . .
 # harus tersedia di sini (bukan hanya saat container jalan).
 # Diisi dari docker-compose build.args (baca dari .env).
 ARG NEXT_PUBLIC_ADMIN_WA=62895803366608
+ARG NEXT_PUBLIC_GOOGLE_REVIEW_URL=
 # dummy env agar build tidak gagal (nilai asli diisi saat running via compose/.env).
 # Catatan: halaman dinamis (force-dynamic) tidak dieksekusi saat build,
 # jadi dummy DATABASE_URL tidak pernah dipakai untuk koneksi betulan.
@@ -18,6 +19,7 @@ ENV ADMIN_PASSWORD=dummy \
     ADMIN_SECRET=dummy-secret-minimal-32-karakter-123456 \
     DATABASE_URL=postgres://dummy:dummy@localhost:5432/dummy \
     NEXT_PUBLIC_ADMIN_WA=${NEXT_PUBLIC_ADMIN_WA} \
+    NEXT_PUBLIC_GOOGLE_REVIEW_URL=${NEXT_PUBLIC_GOOGLE_REVIEW_URL} \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

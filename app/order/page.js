@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
@@ -41,36 +41,112 @@ function OrderForm() {
   const [hasil, setHasil] = useState(null);
   const [fotos, setFotos] = useState([]); // File[] maks 3 (JPG/PNG/WebP @3MB)
   const [preview, setPreview] = useState([]); // thumbnail object-URL
+  const [olahFoto, setOlahFoto] = useState(false); // true saat kompres foto berjalan
   const [tahap, setTahap] = useState('');
 
-  function pilihFoto(list) {
+  // Kompres foto di browser SEBELUM disimpan/di-upload: sisi terpanjang
+  // maks 1280px, kualitas 0.82. Menghemat kuota upload + storage server.
+  // Gagal kompres (browser lama/kanvas error) -> pakai file asli (fallback aman).
+  const FOTO_SISI_MAKS = 1280;
+
+  function kompresFoto(file) {
+    return new Promise((resolve) => {
+      const tipe = file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        try {
+          const skala = Math.min(1, FOTO_SISI_MAKS / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * skala));
+          const h = Math.max(1, Math.round(img.height * skala));
+          const kanvas = document.createElement('canvas');
+          kanvas.width = w;
+          kanvas.height = h;
+          kanvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          kanvas.toBlob(
+            (blob) => {
+              if (!blob) return resolve(file);
+              const ext = tipe === 'image/webp' ? '.webp' : '.jpg';
+              const nama = (file.name || 'foto').replace(/\.[a-z0-9]+$/i, '') + ext;
+              resolve(new File([blob], nama, { type: tipe }));
+            },
+            tipe,
+            0.82
+          );
+        } catch {
+          resolve(file);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+      img.src = url;
+    });
+  }
+
+  async function pilihFoto(list) {
     setError('');
-    const arr = [...fotos];
-    for (const f of list) {
-      if (arr.length >= 3) break;
-      if (!/^image\/(jpeg|png|webp)$/.test(f.type)) {
-        setError(`Format ${f.name} harus JPG / PNG / WebP.`);
-        continue;
+    setOlahFoto(true);
+    try {
+      // URL thumbnail disejajarkan 1:1 dengan `fotos`; URL baru hanya dibuat
+      // untuk file yang benar-benar ditambahkan, URL lama dipakai ulang
+      // (tidak dibuat ulang agar tidak bocor memori).
+      const arr = [...fotos];
+      const urls = [...preview];
+      for (const f of list) {
+        if (arr.length >= 3) break;
+        if (!/^image\/(jpeg|png|webp)$/.test(f.type)) {
+          setError(`Format ${f.name} harus JPG / PNG / WebP.`);
+          continue;
+        }
+        if (f.size > 3 * 1024 * 1024 || f.size <= 0) {
+          setError(`Foto ${f.name} maksimal 3 MB.`);
+          continue;
+        }
+        const kecil = await kompresFoto(f);
+        if (kecil.size > 3 * 1024 * 1024) {
+          setError(`Foto ${f.name} masih di atas 3 MB setelah dikompres, dilewati.`);
+          continue;
+        }
+        arr.push(kecil);
+        urls.push(URL.createObjectURL(kecil));
       }
-      if (f.size > 3 * 1024 * 1024 || f.size <= 0) {
-        setError(`Foto ${f.name} maksimal 3 MB.`);
-        continue;
-      }
-      arr.push(f);
+      setFotos(arr.slice(0, 3));
+      setPreview(urls.slice(0, 3));
+    } finally {
+      setOlahFoto(false);
     }
-    const jadi = arr.slice(0, 3);
-    setFotos(jadi);
-    setPreview(jadi.map((f) => URL.createObjectURL(f)));
   }
 
   function hapusFoto(i) {
-    const jadi = fotos.filter((_, x) => x !== i);
-    setFotos(jadi);
-    setPreview(jadi.map((f) => URL.createObjectURL(f)));
+    // Bebaskan object-URL yang dibuang agar memori browser tidak bocor.
+    if (preview[i]) URL.revokeObjectURL(preview[i]);
+    setFotos(fotos.filter((_, x) => x !== i));
+    setPreview(preview.filter((_, x) => x !== i));
   }
+
+  // Bebaskan semua thumbnail saat halaman ditutup/pindah route.
+  // (via ref agar cleanup unmount selalu melihat daftar URL terbaru,
+  // bukan snapshot kosong saat mount.)
+  const previewRef = useRef([]);
+  previewRef.current = preview;
+  useEffect(
+    () => () => previewRef.current.forEach((u) => URL.revokeObjectURL(u)),
+    []
+  );
 
   function set(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  function orderLain() {
+    preview.forEach((u) => URL.revokeObjectURL(u));
+    setHasil(null);
+    setFotos([]);
+    setPreview([]);
+    setForm({ nama: '', wa: '', kategori: 'SERVICE', layanan: 'Service HP', deskripsi: '', alamat: '', metodeAntar: 'antar-sendiri' });
   }
 
   async function submit(e) {
@@ -131,7 +207,7 @@ function OrderForm() {
               <a className="btn wa" target="_blank" rel="noopener" href={waHref}>
                 💬 Konfirmasi via WA
               </a>
-              <button className="btn ghost" onClick={() => { setHasil(null); setFotos([]); setPreview([]); setForm({ nama: '', wa: '', kategori: 'SERVICE', layanan: 'Service HP', deskripsi: '', alamat: '', metodeAntar: 'antar-sendiri' }); }}>
+              <button className="btn ghost" onClick={orderLain}>
                 + Buat Order Lain
               </button>
             </div>
@@ -199,8 +275,8 @@ function OrderForm() {
 
           <div className="field">
             <label>Foto Kerusakan <small>(opsional, maks 3 — mempercepat diagnosa)</small></label>
-            <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => pilihFoto(e.target.files)} />
-            <div className="hint">JPG / PNG / WebP, masing-masing maksimal 3 MB.</div>
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={olahFoto} onChange={(e) => { pilihFoto(e.target.files); e.target.value = ''; }} />
+            <div className="hint">JPG / PNG / WebP @maks 3 MB — otomatis dikompres di HP-mu biar upload cepat.{olahFoto ? ' ⏳ Mengompres foto...' : ''}</div>
             {preview.length > 0 && (
               <div className="foto-grid">
                 {preview.map((src, i) => (
@@ -229,8 +305,8 @@ function OrderForm() {
             </div>
           )}
 
-          <button className="btn cy" style={{ width: '100%' }} disabled={loading}>
-            {loading ? (tahap || 'Mengirim...') : '🚀 Kirim Order & Dapat Kode Tracking'}
+          <button className="btn cy" style={{ width: '100%' }} disabled={loading || olahFoto}>
+            {olahFoto ? '⏳ Mengompres foto...' : loading ? (tahap || 'Mengirim...') : '🚀 Kirim Order & Dapat Kode Tracking'}
           </button>
           <p style={{ fontSize: 13, color: 'var(--mut)', marginTop: 10, textAlign: 'center' }}>
             Dengan mengorder kamu setuju dihubungi teknisi via WA. Diagnosa awal gratis.

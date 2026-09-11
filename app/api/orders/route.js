@@ -38,6 +38,9 @@ export async function POST(req) {
     const deskripsi = String(b.deskripsi || '').trim();
     const alamat = String(b.alamat || '').trim();
     const metodeAntar = String(b.metodeAntar || 'antar-sendiri');
+    if (!['antar-sendiri', 'jemput', 'online'].includes(metodeAntar)) {
+      return NextResponse.json({ error: 'Metode antar tidak valid.' }, { status: 400 });
+    }
     // Foto dari /api/uploads (opsional, maks 3). URL harus pola internal
     // agar tidak bisa diisi link luar / path aneh.
     const fotoUrls = Array.isArray(b.fotoUrls) ? b.fotoUrls : [];
@@ -80,6 +83,13 @@ export async function POST(req) {
     notifyWa(
       ADMIN_WA,
       `🔔 ORDER BARU ${rows[0].kode}\n${nama} • ${layanan}\n"${deskripsi.slice(0, 120)}"\nCek: ${siteUrl()}/admin/dashboard`
+    ).catch(() => {});
+
+    // Notifikasi WA ke pelanggan berisi kode tracking + link lacak
+    // (fire-and-forget; di-skip bila FONNTE_TOKEN kosong).
+    notifyWa(
+      wa,
+      `✅ Halo ${nama}! Order kamu di *IloTech Solution* sudah masuk.\n\n🎫 Kode tracking: *${rows[0].kode}*\n🔧 Layanan: ${layanan}\n🔍 Lacak progres: ${siteUrl()}/lacak/${rows[0].kode}\n\nSimpan kode ini. Teknisi kami akan menghubungimu untuk diagnosa gratis. 🙏`
     ).catch(() => {});
 
     return NextResponse.json({ order: rowToOrder(rows[0]) }, { status: 201 });

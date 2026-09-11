@@ -18,7 +18,7 @@ export default function Footer() {
             SERVICE, REPAIR & DEVELOPMENT — Website • Aplikasi • Upgrade • Service HP • Laptop • Printer
             <br />
             <Link href="/order">Buat Order</Link> • <Link href="/lacak">Lacak Order</Link> •{' '}
-            <Link href="/admin">Admin</Link>
+            <Link href="/status">Status</Link> • <Link href="/admin">Admin</Link>
           </p>
           <small>© 2026 IloTech Solution — Desa Ilotidea, Tilango, Gorontalo</small>
         </div>

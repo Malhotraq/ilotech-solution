@@ -1,0 +1,26 @@
+{
+  "name": "IloTech Solution — Jasa & Service Teknologi",
+  "short_name": "IloTech",
+  "description": "Order service & jasa online, lacak progres perangkat, Tilango Gorontalo.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05080f",
+  "theme_color": "#05080f",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -11,7 +11,13 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const sp = useSearchParams();
-  const next = sp.get('next') || '/admin/dashboard';
+  // Cegah open-redirect: hanya izinkan path internal ("/..."), tolak URL
+  // absolut, protocol-relative ("//evil"), backslash, dan skema ("javascript:", "https:").
+  const rawNext = sp.get('next') || '/admin/dashboard';
+  const next =
+    rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.includes('\\') && !rawNext.includes(':')
+      ? rawNext
+      : '/admin/dashboard';
 
   async function submit(e) {
     e.preventDefault();

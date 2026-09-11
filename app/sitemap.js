@@ -5,5 +5,5 @@ export default function sitemap() {
     : null;
   if (!base) return [];
   const now = new Date();
-  return ['/', '/order', '/lacak'].map((p) => ({ url: base + p, lastModified: now }));
+  return ['/', '/order', '/lacak', '/status'].map((p) => ({ url: base + p, lastModified: now }));
 }
